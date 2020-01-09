@@ -77,6 +77,11 @@ var globalFlags = []cli.Flag{
 		Value: "",
 	},
 	cli.StringFlag{
+		Name:  "virtual-url",
+		Usage: "customize the published url. ie: https://example.org:1234",
+		Value: "",
+	},
+	cli.StringFlag{
 		Name:  "proxy-path",
 		Usage: "path prefix when service is run behind a proxy",
 		Value: "",
@@ -258,6 +263,10 @@ func New() *Cmd {
 
 		if v := c.String("web-path"); v != "" {
 			options = append(options, server.WebPath(v))
+		}
+
+		if v := c.String("virtual-url"); v != "" {
+			options = append(options, server.VirtualURL(v))
 		}
 
 		if v := c.String("proxy-path"); v != "" {

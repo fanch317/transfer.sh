@@ -121,6 +121,16 @@ func WebPath(s string) OptionFn {
 	}
 }
 
+func VirtualURL(s string) OptionFn {
+	return func(srvr *Server) {
+		virtualURL, err := url.Parse(s)
+		if err != nil {
+			srvr.logger.Panicf("Unable to parse URL: path=%s, err=%s", s, err)
+		}
+		srvr.virtualURL = virtualURL
+	}
+}
+
 func ProxyPath(s string) OptionFn {
 	return func(srvr *Server) {
 		if s[len(s)-1:] != "/" {
@@ -269,6 +279,7 @@ type Server struct {
 	tempPath string
 
 	webPath      string
+	virtualURL   *url.URL
 	proxyPath    string
 	gaKey        string
 	userVoiceKey string

@@ -89,6 +89,7 @@ ip-whitelist | comma separated list of ips allowed to connect to the service | |
 ip-blacklist | comma separated list of ips not allowed to connect to the service | |
 temp-path | path to temp folder | system temp |
 web-path | path to static web files (for development or custom front end) | |
+virtual-url | customize the published url. ie: https://example.org:1234 | |
 proxy-path | path prefix when service is run behind a proxy | |
 ga-key | google analytics key for the front end | |
 uservoice-key | user voice key for the front end  | |

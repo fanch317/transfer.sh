@@ -157,9 +157,9 @@ func (s *Server) previewHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	relativeURL, _ := url.Parse(path.Join(s.proxyPath, token, filename))
-	resolvedURL := resolveURL(r, relativeURL)
+	resolvedURL := resolveURL(r, s.virtualURL, relativeURL)
 	relativeURLGet, _ := url.Parse(path.Join(s.proxyPath, getPathPart, token, filename))
-	resolvedURLGet := resolveURL(r, relativeURLGet)
+	resolvedURLGet := resolveURL(r, s.virtualURL, relativeURLGet)
 	var png []byte
 	png, err = qrcode.Encode(resolvedURL, qrcode.High, 150)
 	if err != nil {
@@ -170,7 +170,10 @@ func (s *Server) previewHandler(w http.ResponseWriter, r *http.Request) {
 	qrCode := base64.StdEncoding.EncodeToString(png)
 
 	hostname := getURL(r).Host
-	webAddress := resolveWebAddress(r, s.proxyPath)
+	if s.virtualURL != nil {
+		hostname = rewriteURL(s.virtualURL, getURL(r)).Host
+	}
+	webAddress := resolveWebAddress(r, s.virtualURL, s.proxyPath)
 
 	data := struct {
 		ContentType   string
@@ -212,7 +215,10 @@ func (s *Server) viewHandler(w http.ResponseWriter, r *http.Request) {
 	// vars := mux.Vars(r)
 
 	hostname := getURL(r).Host
-	webAddress := resolveWebAddress(r, s.proxyPath)
+	if s.virtualURL != nil {
+		hostname = rewriteURL(s.virtualURL, getURL(r)).Host
+	}
+	webAddress := resolveWebAddress(r, s.virtualURL, s.proxyPath)
 
 	data := struct {
 		Hostname     string
@@ -499,15 +505,30 @@ func (s *Server) putHandler(w http.ResponseWriter, r *http.Request) {
 	relativeURL, _ := url.Parse(path.Join(s.proxyPath, token, filename))
 	deleteURL, _ := url.Parse(path.Join(s.proxyPath, token, filename, metadata.DeletionToken))
 
-	w.Header().Set("X-Url-Delete", resolveURL(r, deleteURL))
+	w.Header().Set("X-Url-Delete", resolveURL(r, s.virtualURL, deleteURL))
 
-	fmt.Fprint(w, resolveURL(r, relativeURL))
+	fmt.Fprint(w, resolveURL(r, s.virtualURL, relativeURL))
 }
 
-func resolveURL(r *http.Request, u *url.URL) string {
-	r.URL.Path = ""
+func rewriteURL(virtualURL *url.URL, u *url.URL) url.URL {
+	var newURL url.URL
 
-	return getURL(r).ResolveReference(u).String()
+	if virtualURL == nil {
+		return *u
+	}
+	newURL = *virtualURL
+	newURL.Path = u.Path
+	return newURL
+}
+
+func resolveURL(r *http.Request, virtualURL *url.URL, u *url.URL) string {
+	r.URL.Path = ""
+	newURL := getURL(r).ResolveReference(u)
+	if virtualURL != nil {
+		rewritenURL := rewriteURL(virtualURL, newURL)
+		return rewritenURL.String()
+	}
+	return newURL.String()
 }
 
 func resolveKey(key, proxyPath string) string {
@@ -524,8 +545,11 @@ func resolveKey(key, proxyPath string) string {
 	return key
 }
 
-func resolveWebAddress(r *http.Request, proxyPath string) string {
+func resolveWebAddress(r *http.Request, virtualURL *url.URL, proxyPath string) string {
 	url := getURL(r)
+	if virtualURL != nil {
+		url = virtualURL
+	}
 
 	var webAddress string
 
@@ -539,7 +563,6 @@ func resolveWebAddress(r *http.Request, proxyPath string) string {
 			url.ResolveReference(url).Host,
 			proxyPath)
 	}
-
 	return webAddress
 }
 
